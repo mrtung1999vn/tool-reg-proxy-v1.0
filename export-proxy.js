@@ -1,12 +1,19 @@
+require('dotenv').config();
 const fs = require('fs');
-const { users, basePort } = require('./config');
+const { users } = require('./config');
 
-const VPS_IP = 'YOUR_VPS_IP'; // ⚠️ Thay bằng IP thật của VPS
+// 👇 lấy IP từ .env
+const VPS_IP = process.env.VPS_IP;
 
-const lines = users.map((u, i) => {
-  const port = basePort + i;
-  return `${u.user}:${u.pass}@${VPS_IP}:${port}`;
+const lines = users.map((u) => {
+  return `${u.user}:${u.pass}@${VPS_IP}:${u.port}`;
 });
 
-fs.writeFileSync('proxy.txt', lines.join('\n'));
-console.log('✅ Đã tạo proxy.txt.');
+fs.writeFileSync('proxy.txt', lines.join('\n'), 'utf-8');
+
+console.log('✅ Danh sách proxy đã tạo:\n');
+lines.forEach(line => console.log(line));
+
+console.log('\n✅ Đã lưu danh sách vào proxy.txt');
+console.log('Bạn có thể sử dụng danh sách này trong ứng dụng của mình.');
+console.log('Chúc bạn thành công với dự án của mình! 🚀');

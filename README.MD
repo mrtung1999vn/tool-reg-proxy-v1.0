@@ -148,3 +148,92 @@ Bạn muốn mình:
 - Tạo luôn **repo GitHub mẫu** public cho bạn clone nhanh?
 
 ➡️ Chỉ cần nhắn: **"Tạo file zip"** hoặc **"Push lên GitHub demo giúp tôi"**.
+
+
+
+
+
+
+
+
+
+
+
+# Cài Đặt
+Dưới đây là hướng dẫn đầy đủ giúp bạn cài đặt và cấu hình nhanh môi trường Ubuntu để chạy tool proxy NodeJS + 3proxy:
+
+✅ 1. Cài đặt Ubuntu trên VPS
+Khi tạo VPS (như ảnh bạn gửi), chọn:
+
+Hệ điều hành: Ubuntu
+
+Phiên bản đề xuất: Ubuntu 20.04 LTS hoặc Ubuntu 22.04 LTS
+
+✅ 2. Sau khi tạo VPS xong: SSH vào và chạy các lệnh sau
+📦 Cài đặt đầy đủ môi trường để chạy tool:
+bash
+Sao chép
+Chỉnh sửa
+sudo apt update && sudo apt upgrade -y
+
+# Cài Node.js + npm
+sudo apt install nodejs npm -y
+
+# Cài curl, git, make, build-essential (dành cho 3proxy)
+sudo apt install curl git make g++ -y
+
+# Kiểm tra Node đã cài thành công chưa
+node -v
+npm -v
+✅ 3. Clone tool về VPS (nếu push GitHub)
+bash
+Sao chép
+Chỉnh sửa
+git clone https://github.com/your-username/proxy-tool.git
+cd proxy-tool
+Nếu bạn chưa có GitHub, có thể upload bằng scp hoặc wget từ Google Drive/ZippyShare/Transfer.sh...
+
+✅ 4. Chạy tool (ví dụ)
+bash
+Sao chép
+Chỉnh sửa
+node generate-3proxy.js
+node export-proxy.js
+node web.js
+→ Truy cập trình duyệt: http://your-vps-ip:8080
+
+✅ 5. Khởi động 3proxy (đã cài thủ công)
+bash
+Sao chép
+Chỉnh sửa
+bash start.sh
+Hoặc nếu dùng binary:
+
+bash
+Sao chép
+Chỉnh sửa
+./3proxy 3proxy.cfg
+✅ 6. (Tuỳ chọn) Cài 3proxy từ source:
+bash
+Sao chép
+Chỉnh sửa
+sudo apt install gcc g++ make -y
+git clone https://github.com/z3APA3A/3proxy.git
+cd 3proxy
+make -f Makefile.Linux
+🎁 Tổng lệnh gộp lại (copy 1 lần):
+bash
+Sao chép
+Chỉnh sửa
+sudo apt update && sudo apt upgrade -y
+sudo apt install nodejs npm curl git make g++ -y
+git clone https://github.com/your-username/proxy-tool.git
+cd proxy-tool
+node generate-3proxy.js
+node export-proxy.js
+node web.js
+Bạn cần mình:
+
+✅ Viết file install.sh auto cài tất cả?
+
+✅ Tạo bản .zip tool này tải về chạy ngay?
