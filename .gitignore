@@ -1,0 +1,24 @@
+# Bỏ thư viện đã cài
+node_modules/
+
+# Bỏ file cấu hình sinh tự động
+3proxy.cfg
+proxy.txt
+
+# Bỏ backup, log, temp
+*.log
+*.bak
+*.tmp
+
+# Bỏ hệ thống VSCode, IDE
+.vscode/
+.idea/
+
+# Bỏ môi trường hệ thống
+.DS_Store
+Thumbs.db
+
+# Bỏ thư mục riêng nếu dùng zip cấu hình
+dist/
+build/
+.env
