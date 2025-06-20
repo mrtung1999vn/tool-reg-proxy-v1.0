@@ -223,6 +223,36 @@ setInterval(() => {
   }
 }, 3600000);
 
+
+app.post('/api/proxies/extend-expire', (req, res) => {
+  const { ports, newExpire } = req.body;
+
+  if (!Array.isArray(ports) || ports.length === 0) {
+    return res.status(400).json({ error: 'Danh sách port không hợp lệ' });
+  }
+  if (!newExpire || isNaN(new Date(newExpire).getTime())) {
+    return res.status(400).json({ error: 'Ngày hết hạn không hợp lệ' });
+  }
+
+  let proxies = readProxies();
+  let updatedCount = 0;
+
+  proxies = proxies.map(proxy => {
+    if (ports.includes(proxy.port)) {
+      proxy.expire = newExpire;
+      updatedCount++;
+    }
+    return proxy;
+  });
+
+  writeProxies(proxies);
+  fs.writeFileSync(CONFIG_PATH, generateConfig(proxies));
+  reload3proxy();
+
+  res.json({ success: true, updated: updatedCount });
+});
+
+
 app.listen(SERVER_PORT, () => {
   console.log(`Server running at http://${BIND_IP}:${SERVER_PORT}`);
 });

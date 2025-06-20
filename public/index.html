@@ -73,6 +73,7 @@
         <div id="selectedCount" class="mb-3">
             Đã chọn: <span id="countSelected">0</span> proxy
         </div>
+        <button id="btnCheckExtendExpired" class="btn btn-primary">Check & Gia hạn proxy hết hạn</button>
         <!-- Bảng danh sách proxy -->
         <table class="table table-bordered table-hover" id="proxyTable">
             <thead class="table-light">
@@ -90,6 +91,34 @@
             <tbody></tbody>
         </table>
     </div>
+    <!-- Modal gia hạn proxy hết hạn -->
+<div class="modal fade" id="extendModal" tabindex="-1" aria-labelledby="extendModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg"> <!-- làm rộng modal -->
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="extendModalLabel">Gia hạn proxy hết hạn</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+      </div>
+      <div class="modal-body">
+        <p id="expiredCountText"></p>
+        <label for="newExpireDate">Chọn ngày gia hạn mới:</label>
+        <input type="date" id="newExpireDate" class="form-control mb-3" />
+        
+        <div>
+          <label><input type="checkbox" id="selectAllExtend" /> Chọn tất cả</label>
+        </div>
+
+        <div id="expiredProxyList" style="max-height:300px; overflow-y:auto; border:1px solid #ccc; padding:10px; margin-top:10px;">
+          <!-- Danh sách proxy hết hạn sẽ được tạo ở đây -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnConfirmExtend" type="button" class="btn btn-primary">Gia hạn</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+      </div>
+    </div>
+  </div>
+</div>
 
     <!-- Modal Export -->
     <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
@@ -472,6 +501,79 @@
 
         // Gọi 1 lần sau khi load dữ liệu
         fetchProxies().then(() => updateSelectedCount());
+
+
+
+        const extendModal = new bootstrap.Modal(document.getElementById('extendModal'));
+let expiredProxies = [];
+
+document.getElementById('btnCheckExtendExpired').onclick = async () => {
+  if (!confirm('Kiểm tra proxy hết hạn và gia hạn?')) return;
+
+  const res = await fetch(apiBase);
+  if (!res.ok) return alert('Lỗi lấy proxy');
+  const proxies = await res.json();
+
+  const now = new Date();
+  expiredProxies = proxies.filter(p => p.expire && new Date(p.expire) < now);
+  if (expiredProxies.length === 0) {
+    alert('Không có proxy hết hạn');
+    return;
+  }
+
+  document.getElementById('expiredCountText').textContent = `Có ${expiredProxies.length} proxy hết hạn cần gia hạn.`;
+
+  // Tạo danh sách proxy hết hạn với checkbox
+  const listContainer = document.getElementById('expiredProxyList');
+  listContainer.innerHTML = ''; // reset
+
+  expiredProxies.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'form-check';
+    div.innerHTML = `
+      <input class="form-check-input extendCheckbox" type="checkbox" value="${p.port}" id="extendCheck${p.port}" checked />
+      <label class="form-check-label" for="extendCheck${p.port}">
+        Port: ${p.port}, User: ${p.user}, Họ tên: ${p.fullname || '(trống)'} , SĐT: ${p.phone || '(trống)'} , Hết hạn: ${p.expire.split('T')[0]}
+      </label>
+    `;
+    listContainer.appendChild(div);
+  });
+
+  document.getElementById('newExpireDate').value = '';
+  extendModal.show();
+};
+
+// Chọn tất cả checkbox gia hạn
+document.getElementById('selectAllExtend').onclick = (e) => {
+  const checked = e.target.checked;
+  document.querySelectorAll('.extendCheckbox').forEach(cb => cb.checked = checked);
+};
+
+document.getElementById('btnConfirmExtend').onclick = async () => {
+  const newExpire = document.getElementById('newExpireDate').value;
+  if (!newExpire) return alert('Vui lòng chọn ngày gia hạn');
+
+  const selectedPorts = [...document.querySelectorAll('.extendCheckbox:checked')].map(cb => parseInt(cb.value));
+
+  if (selectedPorts.length === 0) {
+    return alert('Vui lòng chọn ít nhất 1 proxy để gia hạn');
+  }
+
+  for (const port of selectedPorts) {
+    await fetch(`${apiBase}/${port}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expire: newExpire }),
+    });
+  }
+    // Đóng modal và thông báo
+
+  extendModal.hide();
+  alert(`Gia hạn thành công ${selectedPorts.length} proxy`);
+  fetchProxies();
+};
+
+
     </script>
 
 </body>

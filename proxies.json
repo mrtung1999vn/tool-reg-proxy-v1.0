@@ -3,17 +3,17 @@
     "port": 1,
     "user": "2",
     "pass": "3",
-    "expire": "2025-06-19",
-    "fullname": "4",
-    "phone": "555"
+    "expire": "2025-06-21",
+    "fullname": "",
+    "phone": ""
   },
   {
     "port": 2,
     "user": "user2",
     "pass": "XjpBC65O",
-    "expire": "2025-06-30",
-    "fullname": "Nguyễn Văn Mừng",
-    "phone": "0366262072"
+    "expire": "2025-06-21",
+    "fullname": "",
+    "phone": ""
   },
   {
     "port": 3,
