@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quản lý Proxy 3proxy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        body {
+            padding: 20px;
+        }
+
+        table input[type="text"],
+        table input[type="date"] {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2 class="mb-4">Quản lý Proxy 3proxy</h2>
+
+        <!-- Option chọn thêm proxy -->
+        <div class="mb-3">
+            <label><input type="radio" name="mode" value="single" checked /> Thêm từng proxy</label>
+            <label class="ms-3"><input type="radio" name="mode" value="batch" /> Tạo loạt proxy</label>
+        </div>
+
+        <!-- Form thêm proxy đơn lẻ -->
+        <div id="singleForm" class="row mb-3">
+            <div class="col-md-2"><input type="number" id="port" class="form-control" placeholder="Port" /></div>
+            <div class="col-md-2"><input type="text" id="user" class="form-control" placeholder="Username" /></div>
+            <div class="col-md-2"><input type="text" id="pass" class="form-control" placeholder="Password" /></div>
+            <div class="col-md-3"><input type="date" id="expire" class="form-control" /></div>
+            <div class="col-md-3 d-flex gap-2">
+                <input type="text" id="fullname" class="form-control" placeholder="Họ tên khách" />
+                <input type="text" id="phone" class="form-control" placeholder="SĐT khách" />
+            </div>
+        </div>
+
+        <!-- Form tạo loạt proxy -->
+        <div id="batchForm" class="row mb-3" style="display:none;">
+            <div class="col-md-2 mb-2 mb-md-0">
+                <input type="number" id="batchFrom" class="form-control" placeholder="Port bắt đầu" />
+            </div>
+            <div class="col-md-2 mb-2 mb-md-0">
+                <input type="number" id="batchTo" class="form-control" placeholder="Port kết thúc" />
+            </div>
+            <div class="col-md-2 mb-2 mb-md-0">
+                <input type="date" id="batchExpire" class="form-control" placeholder="Ngày hết hạn" />
+            </div>
+            <div class="col-md-3 mb-2 mb-md-0 d-flex gap-2">
+                <input type="text" id="batchFullname" class="form-control" placeholder="Họ tên khách" />
+                <input type="text" id="batchPhone" class="form-control" placeholder="SĐT khách" />
+            </div>
+            <div class="col-md-3 d-flex align-items-center">
+                <button id="btnBatchCreate" class="btn btn-info w-100">Tạo loạt proxy</button>
+            </div>
+        </div>
+
+        <!-- Nút thao tác -->
+        <div class="mb-3 d-flex gap-2">
+            <button id="btnAdd" class="btn btn-primary">Thêm proxy</button>
+            <button id="btnDeleteSelected" class="btn btn-danger">Xóa chọn</button>
+            <button id="btnExport" class="btn btn-success">Export file TXT</button>
+            <button id="btnCheckLive" class="btn btn-secondary">Check Live Proxy</button> <!-- nút mới -->
+            <button id="btnReloadExpired" class="btn btn-warning">Reload & Xóa proxy hết hạn</button>
+            <input type="text" id="search" class="form-control ms-auto" placeholder="Tìm kiếm..."
+                style="max-width: 300px;" />
+        </div>
+        <div id="selectedCount" class="mb-3">
+            Đã chọn: <span id="countSelected">0</span> proxy
+        </div>
+        <!-- Bảng danh sách proxy -->
+        <table class="table table-bordered table-hover" id="proxyTable">
+            <thead class="table-light">
+                <tr>
+                    <th><input type="checkbox" id="selectAll" /></th>
+                    <th>Port</th>
+                    <th>User</th>
+                    <th>Password</th>
+                    <th>Hết hạn</th>
+                    <th>Họ tên KH</th>
+                    <th>SĐT KH</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Modal Export -->
+    <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportModalLabel">Danh sách proxy xuất file TXT</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Port</th>
+                                <th>User</th>
+                                <th>Password</th>
+                                <th>Họ tên KH</th>
+                                <th>SĐT KH</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exportTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button id="downloadExport" class="btn btn-success">Tải file TXT</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const apiBase = '/api/proxies';
+        //  const BIND_IP = 'YOUR_BIND_IP_HERE'; // Thay bằng IP thật hoặc từ server truyền vào
+        const BIND_IP = '103.82.23.55:3000'; // Thay bằng IP thật hoặc từ server truyền vào
+        // Chuyển đổi form theo radio chọn
+        document.querySelectorAll('input[name="mode"]').forEach(el => {
+            el.addEventListener('change', () => {
+                const mode = document.querySelector('input[name="mode"]:checked').value;
+                document.getElementById('singleForm').style.display = mode === 'single' ? 'flex' : 'none';
+                document.getElementById('batchForm').style.display = mode === 'batch' ? 'flex' : 'none';
+                document.getElementById('btnAdd').style.display = mode === 'single' ? 'inline-block' : 'none';
+            });
+        });
+
+        function randomString(length) {
+            const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        let proxiesData = [];
+
+        async function fetchProxies() {
+            const res = await fetch(apiBase);
+            proxiesData = await res.json();
+            renderTable(proxiesData);
+        }
+
+        let editPort = null;
+
+        function renderTable(proxies) {
+            const tbody = document.querySelector('#proxyTable tbody');
+            tbody.innerHTML = '';
+            proxies.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.dataset.port = p.port;
+
+                tr.innerHTML = `
+        <td><input type="checkbox" class="selectRow"></td>
+        <td>${p.port}</td>
+        <td>${p.user}</td>
+        <td><input type="text" class="form-control form-control-sm passInput" value="${p.pass}" readonly /></td>
+        <td><input type="date" class="form-control form-control-sm expireInput" value="${p.expire ? p.expire.split('T')[0] : ''}" readonly /></td>
+        <td><input type="text" class="form-control form-control-sm fullnameInput" value="${p.fullname || ''}" placeholder="Không có" readonly /></td>
+        <td><input type="text" class="form-control form-control-sm phoneInput" value="${p.phone || ''}" placeholder="Không có" readonly /></td>
+        <td>
+          <button class="btn btn-sm btn-secondary btnEdit">Sửa</button>
+          <button class="btn btn-sm btn-success btnSave" style="display:none;">Lưu</button>
+          <button class="btn btn-danger btn-sm btnDelete">Xóa</button>
+        </td>
+      `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Thêm proxy đơn lẻ
+        document.getElementById('btnAdd').onclick = async () => {
+            const port = Number(document.getElementById('port').value);
+            const user = document.getElementById('user').value.trim();
+            const pass = document.getElementById('pass').value.trim();
+            const expire = document.getElementById('expire').value || null;
+            const fullname = document.getElementById('fullname').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+
+            if (!port || !user || !pass) {
+                alert('Vui lòng nhập đủ Port, Username, Password!');
+                return;
+            }
+
+            const res = await fetch(apiBase, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ port, user, pass, expire, fullname, phone })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                alert('Thêm proxy thành công!');
+                fetchProxies();
+                // Xóa form
+                document.getElementById('port').value = '';
+                document.getElementById('user').value = '';
+                document.getElementById('pass').value = '';
+                document.getElementById('expire').value = '';
+                document.getElementById('fullname').value = '';
+                document.getElementById('phone').value = '';
+            } else {
+                alert('Lỗi: ' + data.error);
+            }
+        };
+
+        // Tạo loạt proxy
+        document.getElementById('btnBatchCreate').onclick = async () => {
+            const from = parseInt(document.getElementById('batchFrom').value);
+            const to = parseInt(document.getElementById('batchTo').value);
+            const expire = document.getElementById('batchExpire').value || null;
+            const fullname = document.getElementById('batchFullname').value.trim();
+            const phone = document.getElementById('batchPhone').value.trim();
+
+            if (!fullname || !phone) {
+                alert('Vui lòng nhập Họ tên và SĐT khách trước khi tạo proxy loạt!');
+                return;
+            }
+
+            if (isNaN(from) || isNaN(to) || from <= 0 || to <= 0 || from > to) {
+                alert('Vui lòng nhập khoảng port hợp lệ (from ≤ to, > 0)');
+                return;
+            }
+
+            if (!confirm(`Tạo proxy từ port ${from} đến ${to}. Tiếp tục?`)) return;
+
+            const res = await fetch('/api/proxies/batch-range', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from, to, expire, fullname, phone }),
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                alert(`Đã tạo ${data.added} proxy. Bỏ qua ${data.skipped} port đã tồn tại.`);
+                fetchProxies();
+                // Xóa form batch
+                document.getElementById('batchFrom').value = '';
+                document.getElementById('batchTo').value = '';
+                document.getElementById('batchExpire').value = '';
+                document.getElementById('batchFullname').value = '';
+                document.getElementById('batchPhone').value = '';
+            } else {
+                alert('Lỗi: ' + (data.error || 'Không xác định'));
+            }
+        };
+
+
+
+        // Bật/tắt sửa proxy từng dòng
+        document.querySelector('#proxyTable tbody').addEventListener('click', async e => {
+            const tr = e.target.closest('tr');
+            const port = Number(tr?.dataset.port);
+
+            if (e.target.classList.contains('btnEdit')) {
+                tr.querySelectorAll('input').forEach(i => i.readOnly = false);
+                e.target.style.display = 'none';
+                tr.querySelector('.btnSave').style.display = 'inline-block';
+            } else if (e.target.classList.contains('btnSave')) {
+                const pass = tr.querySelector('.passInput').value.trim();
+                const expire = tr.querySelector('.expireInput').value || null;
+                const fullname = tr.querySelector('.fullnameInput').value.trim();
+                const phone = tr.querySelector('.phoneInput').value.trim();
+
+                const res = await fetch(`${apiBase}/${port}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pass, expire, fullname, phone })
+                });
+                if (res.ok) {
+                    alert('Cập nhật thành công');
+                    tr.querySelectorAll('input').forEach(i => i.readOnly = true);
+                    e.target.style.display = 'none';
+                    tr.querySelector('.btnEdit').style.display = 'inline-block';
+                } else {
+                    alert('Cập nhật lỗi');
+                }
+            } else if (e.target.classList.contains('btnDelete')) {
+                if (!confirm(`Xóa proxy port ${port}?`)) return;
+                const res = await fetch(`${apiBase}/${port}`, { method: 'DELETE' });
+                if (res.ok) fetchProxies();
+                else alert('Xóa lỗi');
+            }
+        });
+
+        // Chọn/Xóa chọn tất cả
+        document.getElementById('selectAll').addEventListener('change', e => {
+            const checked = e.target.checked;
+            document.querySelectorAll('.selectRow').forEach(cb => cb.checked = checked);
+        });
+
+        // Xóa nhiều proxy cùng lúc
+        document.getElementById('btnDeleteSelected').onclick = async () => {
+            const selectedPorts = [...document.querySelectorAll('.selectRow:checked')]
+                .map(cb => cb.closest('tr').dataset.port);
+
+            if (selectedPorts.length === 0) {
+                alert('Chưa chọn proxy nào!');
+                return;
+            }
+
+            if (!confirm(`Xóa ${selectedPorts.length} proxy đã chọn?`)) return;
+
+            for (const port of selectedPorts) {
+                await fetch(`${apiBase}/${port}`, { method: 'DELETE' });
+            }
+
+            fetchProxies();
+        };
+
+        // Tìm kiếm gần đúng
+        document.getElementById('search').addEventListener('input', e => {
+            const keyword = e.target.value.trim().toLowerCase();
+            document.querySelectorAll('#proxyTable tbody tr').forEach(tr => {
+                const port = tr.children[1].textContent.toLowerCase();
+                const user = tr.children[2].textContent.toLowerCase();
+                const fullname = tr.querySelector('.fullnameInput').value.toLowerCase();
+                const phone = tr.querySelector('.phoneInput').value.toLowerCase();
+
+                const matched = [port, user, fullname, phone].some(field => field.includes(keyword));
+                tr.style.display = matched ? '' : 'none';
+            });
+        });
+
+        // Modal Export
+        const exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
+        document.getElementById('btnExport').onclick = () => {
+            const tbody = document.getElementById('exportTableBody');
+            tbody.innerHTML = '';
+
+            document.querySelectorAll('#proxyTable tbody tr').forEach(tr => {
+                if (tr.style.display === 'none') return;
+                const port = tr.children[1].textContent;
+                const user = tr.children[2].textContent;
+                const pass = tr.querySelector('.passInput').value.trim();
+                const fullname = tr.querySelector('.fullnameInput').value.trim();
+                const phone = tr.querySelector('.phoneInput').value.trim();
+
+                const trExport = document.createElement('tr');
+                trExport.innerHTML = `
+        <td>${port}</td>
+        <td>${user}</td>
+        <td>${pass}</td>
+        <td><input type="text" class="form-control form-control-sm exportFullname" value="${fullname}" /></td>
+        <td><input type="text" class="form-control form-control-sm exportPhone" value="${phone}" /></td>
+      `;
+                tbody.appendChild(trExport);
+            });
+
+            exportModal.show();
+        };
+
+        // Tải file TXT từ modal
+        document.getElementById('downloadExport').onclick = () => {
+            const rows = document.querySelectorAll('#exportTableBody tr');
+            const lines = [];
+            rows.forEach(row => {
+                const port = row.children[0].textContent;
+                const user = row.children[1].textContent;
+                const pass = row.children[2].textContent;
+                const fullname = row.querySelector('.exportFullname').value.trim();
+                const phone = row.querySelector('.exportPhone').value.trim();
+
+                lines.push(`${user}:${pass}@${BIND_IP}:${port}`);
+            });
+
+            const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `proxy_list_${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            exportModal.hide();
+        };
+
+        // Nút reload xóa proxy hết hạn
+        document.getElementById('btnReloadExpired').onclick = async () => {
+            if (!confirm('Xóa proxy hết hạn và reload 3proxy?')) return;
+            const res = await fetch('/api/proxies/reload-expired', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`Đã xóa ${data.deleted} proxy hết hạn và reload thành công.`);
+                fetchProxies();
+            } else {
+                alert('Lỗi khi reload: ' + (data.error || 'Không xác định'));
+            }
+        };
+
+        fetchProxies();
+
+
+        // Kiểm tra proxy sống/chết
+        async function checkProxy(proxy) {
+            const proxyUrl = `http://${proxy.user}:${proxy.pass}@${BIND_IP.split(':')[0]}:${proxy.port}`;
+            try {
+                // Cách đơn giản: gọi fetch tới 1 trang test qua proxy (cần backend hỗ trợ hoặc dùng fetch timeout)
+                // Ở đây giả sử backend có API /api/proxy-check?proxy=ip:port để kiểm tra
+                const res = await fetch(`/api/proxy-check?proxy=${encodeURIComponent(proxyUrl)}`, { method: 'GET', cache: 'no-store' });
+                if (res.ok) {
+                    const json = await res.json();
+                    return json.alive === true;
+                }
+                return false;
+            } catch {
+                return false;
+            }
+        }
+
+        document.getElementById('btnCheckLive').onclick = async () => {
+            if (!confirm('Kiểm tra trạng thái tất cả proxy hiện có? Proxy chết sẽ được tự động tích checkbox.')) return;
+
+            const btn = document.getElementById('btnCheckLive');
+            btn.disabled = true;
+            btn.textContent = 'Đang kiểm tra...';
+
+            for (const proxy of proxiesData) {
+                const tr = document.querySelector(`#proxyTable tbody tr[data-port="${proxy.port}"]`);
+                const checkbox = tr.querySelector('.selectRow');
+
+                const alive = await checkProxy(proxy);
+                if (!alive) {
+                    checkbox.checked = true;
+                    tr.classList.add('table-danger'); // Tô màu đỏ proxy chết
+                } else {
+                    checkbox.checked = false;
+                    tr.classList.remove('table-danger');
+                }
+            }
+
+            alert('Kiểm tra proxy hoàn tất!');
+            updateSelectedCount();
+            // Reset nút
+            btn.disabled = false;
+            btn.textContent = 'Check Live Proxy';
+        };
+
+
+        function updateSelectedCount() {
+            const count = document.querySelectorAll('.selectRow:checked').length;
+            document.getElementById('countSelected').textContent = count;
+        }
+
+        // Cập nhật khi check/uncheck từng dòng
+        document.querySelector('#proxyTable tbody').addEventListener('change', e => {
+            if (e.target.classList.contains('selectRow')) {
+                updateSelectedCount();
+            }
+        });
+
+        // Cập nhật khi check/uncheck tất cả
+        document.getElementById('selectAll').addEventListener('change', e => {
+            const checked = e.target.checked;
+            document.querySelectorAll('.selectRow').forEach(cb => cb.checked = checked);
+            updateSelectedCount();
+        });
+
+        // Gọi 1 lần sau khi load dữ liệu
+        fetchProxies().then(() => updateSelectedCount());
+    </script>
+
+</body>
+
+</html>
