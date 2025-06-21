@@ -47,12 +47,14 @@ function generateConfig(proxies) {
   if (validProxies.length === 0) return 'auth none\nproxy -n -p3128\nflush\n';
 
   const users = validProxies.map(p => `${p.user}:CL:${p.pass}`).join(' ');
+  const allows = validProxies.map(p => `allow ${p.user}`).join('\n');
   const proxiesConf = validProxies.map(p =>
     `proxy -n -a -p${p.port} -i${BIND_IP} -u${p.user} -P${p.pass}`
   ).join('\n');
 
   return `auth strong
 users ${users}
+${allows}
 
 ${proxiesConf}
 
