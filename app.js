@@ -11,6 +11,20 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static('public'));
 
+function openPort(port) {
+  exec(`ufw allow ${port}`, (err) => {
+    if (err) console.error(`❌ Failed to open port ${port}:`, err);
+    else console.log(`✅ Opened port ${port}`);
+  });
+}
+
+function closePort(port) {
+  exec(`ufw delete allow ${port}`, (err) => {
+    if (err) console.error(`❌ Failed to close port ${port}:`, err);
+    else console.log(`✅ Closed port ${port}`);
+  });
+}
+
 const BIND_IP = process.env.BIND_IP || '127.0.0.1';
 const SERVER_PORT = parseInt(process.env.SERVER_PORT, 10) || 3000;
 const CONFIG_PATH = path.isAbsolute(process.env.CONFIG_PATH)
@@ -96,6 +110,7 @@ app.post('/api/proxies', (req, res) => {
 
   proxies.push({ port, user, pass, expire: expire || null, fullname: fullname || '', phone: phone || '' });
   writeProxies(proxies);
+  openPort(port);
   fs.writeFileSync(CONFIG_PATH, generateConfig(proxies));
   reload3proxy();
 
@@ -124,7 +139,7 @@ app.put('/api/proxies/:port', (req, res) => {
   writeProxies(proxies);
   fs.writeFileSync(CONFIG_PATH, generateConfig(proxies));
   reload3proxy();
-
+  closePort(port);
   console.log(`Updated proxy port:${port}`);
   res.json({ success: true });
 });
@@ -170,6 +185,7 @@ app.post('/api/proxies/batch-range', (req, res) => {
     const user = 'user' + port;
     const pass = randomString(8); // Bạn cần định nghĩa randomString ở server nếu chưa có
     existing.push({ port, user, pass, expire: expire || null, fullname, phone });
+    openPort(port);
     addedCount++;
   }
 
@@ -209,7 +225,8 @@ app.post('/api/proxies/reload-expired', (req, res) => {
 
   res.json({ deleted: deletedCount });
 });
-
+const expired = proxies.filter(p => p.expire && new Date(p.expire) <= now);
+expired.forEach(p => closePort(p.port));
 // Scheduler xóa proxy hết hạn mỗi giờ
 setInterval(() => {
   let proxies = readProxies();
@@ -218,6 +235,8 @@ setInterval(() => {
   if (filtered.length !== proxies.length) {
     writeProxies(filtered);
     fs.writeFileSync(CONFIG_PATH, generateConfig(filtered));
+    const expired = proxies.filter(p => p.expire && new Date(p.expire) <= now);
+    expired.forEach(p => closePort(p.port));
     reload3proxy();
     console.log('Removed expired proxies and reloaded 3proxy');
   }
