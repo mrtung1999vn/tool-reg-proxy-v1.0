@@ -223,10 +223,11 @@ app.post('/api/proxies/reload-expired', (req, res) => {
     reload3proxy();
   }
 
+  const expired = proxies.filter(p => p.expire && new Date(p.expire) <= now);
+  expired.forEach(p => closePort(p.port));
+  
   res.json({ deleted: deletedCount });
 });
-const expired = proxies.filter(p => p.expire && new Date(p.expire) <= now);
-expired.forEach(p => closePort(p.port));
 // Scheduler xóa proxy hết hạn mỗi giờ
 setInterval(() => {
   let proxies = readProxies();
