@@ -44,21 +44,19 @@ function generateConfig(proxies) {
   const now = new Date();
   const validProxies = proxies.filter(p => !p.expire || new Date(p.expire) > now);
 
-  if (validProxies.length === 0) return 'auth none\nproxy -n -p3128\nflush\n';
+  if (validProxies.length === 0) {
+    return `auth none
+    proxy -n -p3128 -i${BIND_IP} -e0.0.0.0
+    flush`;
+      }
 
-  const users = validProxies.map(p => `${p.user}:CL:${p.pass}`).join(' ');
-  const allows = validProxies.map(p => `allow ${p.user}`).join('\n');
-  const proxiesConf = validProxies.map(p =>
-    `proxy -n -a -p${p.port} -i${BIND_IP} -u${p.user} -P${p.pass}`
-  ).join('\n');
+      const proxiesConf = validProxies.map(p =>
+        `proxy -n -a -p${p.port} -i${BIND_IP} -e0.0.0.0`
+      ).join('\n');
 
-  return `auth strong
-users ${users}
-${allows}
-
-${proxiesConf}
-
-flush`;
+      return `auth none
+    ${proxiesConf}
+    flush`;
 }
 
 function reload3proxy() {
@@ -258,4 +256,3 @@ app.post('/api/proxies/extend-expire', (req, res) => {
 app.listen(SERVER_PORT, () => {
   console.log(`Server running at http://${BIND_IP}:${SERVER_PORT}`);
 });
-// Kiểm tra và tạo file proxies.json nếu chưa tồn tại
