@@ -44,18 +44,27 @@ function generateConfig(proxies) {
   const validProxies = proxies.filter(p => !p.expire || new Date(p.expire) > now);
   if (validProxies.length === 0) return 'auth none\nproxy -n -p3128\nflush\n';
 
+<<<<<<< HEAD
   const users = validProxies.map(p => {
     const md5 = crypto.createHash('md5').update(p.pass).digest('hex');
     return `${p.user}:CL:${md5}`;
   }).join(' ');
 
+=======
+  const users = validProxies.map(p => `${p.user}:CL:${p.pass}`).join(' ');
+  const allows = validProxies.map(p => `allow ${p.user}`).join('\n');
+>>>>>>> b14041daef3f22557ade073333af4bac91659dae
   const proxiesConf = validProxies.map(p =>
     `proxy -n -a -p${p.port} -i${BIND_IP}`
   ).join('\n');
 
   return `auth strong
 users ${users}
+<<<<<<< HEAD
 allow * 
+=======
+${allows}
+>>>>>>> b14041daef3f22557ade073333af4bac91659dae
 
 ${proxiesConf}
 
